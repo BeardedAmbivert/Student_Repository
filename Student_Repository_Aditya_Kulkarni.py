@@ -61,8 +61,8 @@ class University:
         store students, instructors and pretty table
         """
         self._path: str = path
-        self._students: Dict[str, _Student] = dict()  # _students[cwid] = Student()
-        self._instructors: Dict[str, _Instructor] = dict()  # _instructors[cwid] instructors()
+        self._students: Dict[str, Student] = dict()  # _students[cwid] = Student()
+        self._instructors: Dict[str, Instructor] = dict()  # _instructors[cwid] instructors()
         self._read_students(os.path.join(self._path, 'students.txt'))
         self._read_instructors(os.path.join(self._path, 'instructors.txt'))
         self._read_grades(os.path.join(self._path, 'grades.txt'))
