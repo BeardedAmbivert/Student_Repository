@@ -4,7 +4,7 @@ Classes for creating a University repository which stores information for studen
 
 import os
 from collections import defaultdict
-from typing import Dict, List, IO, DefaultDict, Tuple
+from typing import Dict, List, DefaultDict, Tuple, Any
 from prettytable import PrettyTable
 from HW08_Aditya_Kulkarni import file_reader
 
@@ -21,7 +21,7 @@ class Student:
 
     def store_course_grade(self, course: str, grade: str) -> None:
         """store information for grades scored by the student"""
-        self.courses[course] = self.courses.get(0, grade)
+        self.courses[course] = grade
 
     def info(self) -> Tuple[str, str, list]:
         """return student information for pretty table"""
@@ -36,7 +36,7 @@ class Instructor:
         self.cwid: str = cwid
         self.name: str = name
         self.dept: str = dept
-        self.courses: DefaultDict[list] = defaultdict(list)
+        self.courses: DefaultDict[Any, Any] = defaultdict(list)
 
     def store_course_student(self, course_info: tuple) -> None:
         """storing student registered in each course"""
@@ -47,10 +47,7 @@ class Instructor:
         """
         return information needed for pretty table
         """
-        course_info: List = list()
-        for k, v in self.courses.items():
-            course_info.append([self.cwid, self.name, self.dept, k, len(v)])
-        return course_info
+        return [[self.cwid, self.name, self.dept, k, len(v)] for k, v in self.courses.items()]
 
 
 class University:
@@ -64,8 +61,8 @@ class University:
         store students, instructors and pretty table
         """
         self._path: str = path
-        self._students: Dict[str, Student] = dict()  # _students[cwid] = Student()
-        self._instructors: Dict[str, Instructor] = dict()  # _instructors[cwid] instructors()
+        self._students: Dict[str, _Student] = dict()  # _students[cwid] = Student()
+        self._instructors: Dict[str, _Instructor] = dict()  # _instructors[cwid] instructors()
         self._read_students(os.path.join(self._path, 'students.txt'))
         self._read_instructors(os.path.join(self._path, 'instructors.txt'))
         self._read_grades(os.path.join(self._path, 'grades.txt'))
@@ -90,8 +87,17 @@ class University:
         """read grades file"""
         try:
             for s_cwid, course, grade, i_cwid in file_reader(path, 4, '\t', False):
-                self._students[s_cwid].store_course_grade(course, grade)
-                self._instructors[i_cwid].store_course_student((course, s_cwid))
+
+                if s_cwid in self._students:
+                    self._students[s_cwid].store_course_grade(course, grade)
+                else:
+                    print(f"Found grades for unknown student {s_cwid}")
+
+                if i_cwid in self._instructors:
+                    self._instructors[i_cwid].store_course_student((course, s_cwid))
+                else:
+                    print(f"Found grades for unknown student {i_cwid}")
+
         except(FileNotFoundError, ValueError) as e:
             print(e)
 
