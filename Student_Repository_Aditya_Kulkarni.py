@@ -4,18 +4,18 @@ Classes for creating a University repository which stores information for studen
 
 import os
 from collections import defaultdict
-from typing import Dict, List, DefaultDict, Tuple, Any
+from typing import Dict, List, DefaultDict
 from prettytable import PrettyTable
 from HW08_Aditya_Kulkarni import file_reader
 
 
 class _Major:
     """Store information regarding each major"""
+
     def __init__(self):
         """  """
         self._required = list()
         self._electives = list()
-        self.major_info: DefaultDict[str, list] = defaultdict(list)
 
     def store_major(self, type_course: str, course: str) -> None:
         """ stores required and elective courses """
@@ -53,11 +53,12 @@ class _Student:
                 self._remaining_electives.clear()
 
     def calculate_gpa(self) -> float:
-        return round((sum(self._courses.values())/len(self._courses)), 2)
+        return round((sum(self._courses.values()) / len(self._courses)), 2)
 
     def info(self) -> List:
         """return student information for pretty table"""
-        return [self._cwid, self._name, self._major, list(self._courses.keys()), self._remaining_required, self._remaining_electives, self.calculate_gpa()]
+        return [self._cwid, self._name, self._major, list(self._courses.keys()), self._remaining_required,
+                self._remaining_electives, self.calculate_gpa()]
 
 
 class Instructor:
@@ -82,7 +83,8 @@ class Instructor:
 
 class University:
     """University stores students and instructors at for the university and print pretty table"""
-    grade_map = {"A": 4.0, "A-": 3.75, "B+": 3.25, "B": 3.0, "B-": 2.75, "C+": 2.25, "C": 2.0, "C-": 0, "D+": 0, "D": 0, "D-": 0, "F": 0}
+    grade_map = {"A": 4.0, "A-": 3.75, "B+": 3.25, "B": 3.0, "B-": 2.75, "C+": 2.25, "C": 2.0, "C-": 0, "D+": 0, "D": 0,
+                 "D-": 0, "F": 0}
 
     def __init__(self, path: str) -> None:
         """store students, instructors and pretty table"""
