@@ -97,24 +97,6 @@ class University:
         self._read_instructors(os.path.join(self._path, 'instructors.txt'))
         self._read_grades(os.path.join(self._path, 'grades.txt'))
 
-    def _read_students(self, path: str) -> None:
-        """read student file"""
-        try:
-            for cwid, name, major in file_reader(path, 3, ';', True):
-                self._students[cwid] = _Student(cwid, name, major,
-                                                self._majors[major].get_required(),
-                                                self._majors[major].get_electives())
-        except(FileNotFoundError, ValueError) as e:
-            print(e)
-
-    def _read_instructors(self, path: str) -> None:
-        """read instructor file"""
-        try:
-            for cwid, name, dept in file_reader(path, 3, '|', True):
-                self._instructors[cwid] = Instructor(cwid, name, dept)
-        except(FileNotFoundError, ValueError) as e:
-            print(e)
-
     def _read_major(self, path: str) -> None:
         try:
             for major, type_course, course in file_reader(path, 3, '\t', True):
@@ -123,6 +105,27 @@ class University:
                     self._majors[major].store_major(type_course, course)
                 else:
                     self._majors[major].store_major(type_course, course)
+        except(FileNotFoundError, ValueError) as e:
+            print(e)
+
+    def _read_students(self, path: str) -> None:
+        """read student file"""
+        try:
+            for cwid, name, major in file_reader(path, 3, ';', True):
+                if major in self._majors:
+                    self._students[cwid] = _Student(cwid, name, major,
+                                                    self._majors[major].get_required(),
+                                                    self._majors[major].get_electives())
+                else:
+                    print(f"Found student registered in unknown major {major}")
+        except(FileNotFoundError, ValueError) as e:
+            print(e)
+
+    def _read_instructors(self, path: str) -> None:
+        """read instructor file"""
+        try:
+            for cwid, name, dept in file_reader(path, 3, '|', True):
+                self._instructors[cwid] = Instructor(cwid, name, dept)
         except(FileNotFoundError, ValueError) as e:
             print(e)
 
@@ -169,7 +172,7 @@ class University:
 
 def main():
     """define the university"""
-    stevens_univ: University = University('C:\\Users\\rajek\\PycharmProjects\\Student_Repository')
+    stevens_univ: University = University(os.getcwd())
     stevens_univ.major_pretty_table()
     stevens_univ.student_pretty_table()
     stevens_univ.instructor_pretty_table()
