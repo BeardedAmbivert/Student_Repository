@@ -1,10 +1,11 @@
 """
-Classes for creating a University repository which stores information for students and instructors
+Classes for creating a University repository which stores information for students and instructors and majors
 """
 
 import os
+import sqlite3
 from collections import defaultdict
-from typing import Dict, List, DefaultDict
+from typing import Dict, List, DefaultDict, Tuple
 from prettytable import PrettyTable
 from HW08_Aditya_Kulkarni import file_reader
 
@@ -13,9 +14,9 @@ class _Major:
     """Store information regarding each major"""
 
     def __init__(self):
-        """  """
-        self._required = list()
-        self._electives = list()
+        """ Constructor for Majors class """
+        self._required: List = list()
+        self._electives: List = list()
 
     def store_major(self, type_course: str, course: str) -> None:
         """ stores required and elective courses """
@@ -25,9 +26,11 @@ class _Major:
             self._electives.append(course)
 
     def get_required(self):
+        """return list of required courses"""
         return self._required
 
     def get_electives(self):
+        """return list of elective courses"""
         return self._electives
 
 
@@ -53,6 +56,7 @@ class _Student:
                 self._remaining_electives.clear()
 
     def calculate_gpa(self) -> float:
+        """Calculate gpa for student"""
         return round((sum(self._courses.values()) / len(self._courses)), 2)
 
     def info(self) -> List:
@@ -83,11 +87,11 @@ class Instructor:
 
 class University:
     """University stores students and instructors at for the university and print pretty table"""
-    grade_map = {"A": 4.0, "A-": 3.75, "B+": 3.25, "B": 3.0, "B-": 2.75, "C+": 2.25, "C": 2.0, "C-": 0, "D+": 0, "D": 0,
-                 "D-": 0, "F": 0}
+    grade_map: Dict[str, float] = {"A": 4.0, "A-": 3.75, "B+": 3.25, "B": 3.0, "B-": 2.75, "C+": 2.25, "C": 2.0,
+                                   "C-": 0, "D+": 0, "D": 0, "D-": 0, "F": 0}
 
     def __init__(self, path: str) -> None:
-        """store students, instructors and pretty table"""
+        """store students, instructors, grades and majors info"""
         self._path: str = path
         self._students: Dict[str, _Student] = dict()  # _students[cwid] = Student()
         self._instructors: Dict[str, Instructor] = dict()  # _instructors[cwid] instructors()
@@ -96,8 +100,14 @@ class University:
         self._read_students(os.path.join(self._path, 'students.txt'))
         self._read_instructors(os.path.join(self._path, 'instructors.txt'))
         self._read_grades(os.path.join(self._path, 'grades.txt'))
+        self._query: str = """select s.Name as Name, s.CWID, g.Course, g.Grade, i.Name as Instructor
+                              from students s
+                                join grades g on s.CWID = g.StudentCWID
+                                join instructors i on g.InstructorCWID = i.CWID
+                              order by s.Name;"""
 
     def _read_major(self, path: str) -> None:
+        """read majors file"""
         try:
             for major, type_course, course in file_reader(path, 3, '\t', True):
                 if major not in self._majors:
@@ -111,7 +121,7 @@ class University:
     def _read_students(self, path: str) -> None:
         """read student file"""
         try:
-            for cwid, name, major in file_reader(path, 3, ';', True):
+            for cwid, name, major in file_reader(path, 3, '\t', True):
                 if major in self._majors:
                     self._students[cwid] = _Student(cwid, name, major,
                                                     self._majors[major].get_required(),
@@ -124,7 +134,7 @@ class University:
     def _read_instructors(self, path: str) -> None:
         """read instructor file"""
         try:
-            for cwid, name, dept in file_reader(path, 3, '|', True):
+            for cwid, name, dept in file_reader(path, 3, '\t', True):
                 self._instructors[cwid] = Instructor(cwid, name, dept)
         except(FileNotFoundError, ValueError) as e:
             print(e)
@@ -132,8 +142,7 @@ class University:
     def _read_grades(self, path: str) -> None:
         """read grades file"""
         try:
-            for s_cwid, course, grade, i_cwid in file_reader(path, 4, '|', True):
-
+            for s_cwid, course, grade, i_cwid in file_reader(path, 4, '\t', True):
                 if s_cwid in self._students:
                     self._students[s_cwid].store_course_grade(course, self.grade_map[grade])
                 else:
@@ -143,18 +152,18 @@ class University:
                     self._instructors[i_cwid].store_course_student((course, s_cwid))
                 else:
                     print(f"Found grades for unknown student {i_cwid}")
-
         except(FileNotFoundError, ValueError) as e:
             print(e)
 
     def major_pretty_table(self) -> None:
+        """Display majors info in tabular form"""
         pt: PrettyTable = PrettyTable(field_names=["Major", "Required Courses", "Electives"])
         for m_cwid in self._majors.keys():
             pt.add_row([m_cwid, self._majors[m_cwid].get_required(), self._majors[m_cwid].get_electives()])
         print(pt)
 
     def student_pretty_table(self) -> None:
-        """Display student info"""
+        """Display student info in tabular form"""
         pt: PrettyTable = PrettyTable(field_names=["CWID", "Name", "Major", "Completed Courses",
                                                    "Remaining Required", "RemainingElectives", "GPA"])
         for s_cwid in self._students.keys():
@@ -162,12 +171,42 @@ class University:
         print(pt)
 
     def instructor_pretty_table(self) -> None:
-        """Display instructor info"""
+        """Display instructor info in tabular form"""
         pt: PrettyTable = PrettyTable(field_names=["CWID", "Name", "Dept", "Course", "Students"])
         for i_cwid in self._instructors.keys():
             for rec in self._instructors[i_cwid].info():
                 pt.add_row(rec)
         print(pt)
+
+    def student_grades_table_db(self, db_path) -> None:
+        """Display student and grades in tabular form"""
+        try:
+            db: sqlite3.Connection = sqlite3.connect(db_path)
+        except sqlite3.OperationalError as e:
+            print(e)
+        else:
+            pt: PrettyTable = PrettyTable(field_names=["Name", "CWID", "Course", "Grade", "Instructor"])
+            try:
+                for row in db.execute(self._query):
+                    pt.add_row(row)
+                print(pt)
+                db.close()
+            except sqlite3.OperationalError as e:
+                print(e)
+
+    def _student_grades_table_db_test(self, db_path) -> Tuple:
+        """Generator to test sql query"""
+        try:
+            db: sqlite3.Connection = sqlite3.connect(db_path)
+        except sqlite3.OperationalError as e:
+            print(e)
+        else:
+            try:
+                for row in db.execute(self._query):
+                    yield row
+                db.close()
+            except sqlite3.OperationalError as e:
+                print(e)
 
 
 def main():
@@ -176,6 +215,7 @@ def main():
     stevens_univ.major_pretty_table()
     stevens_univ.student_pretty_table()
     stevens_univ.instructor_pretty_table()
+    stevens_univ.student_grades_table_db("student_repo.sqlite")
 
 
 if __name__ == '__main__':
