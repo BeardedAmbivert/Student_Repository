@@ -5,9 +5,8 @@ Classes for creating a University repository which stores information for studen
 import os
 import sqlite3
 from collections import defaultdict
-from typing import Dict, List, DefaultDict, Tuple
+from typing import Dict, List, DefaultDict, Tuple, IO, Iterator
 from prettytable import PrettyTable
-from HW08_Aditya_Kulkarni import file_reader
 
 
 class _Major:
@@ -90,6 +89,27 @@ class University:
     grade_map: Dict[str, float] = {"A": 4.0, "A-": 3.75, "B+": 3.25, "B": 3.0, "B-": 2.75, "C+": 2.25, "C": 2.0,
                                    "C-": 0, "D+": 0, "D": 0, "D-": 0, "F": 0}
 
+    @staticmethod
+    def _file_reader(path: str, fields: int, sep: str = ',', header: bool = False) -> Iterator[Tuple[str]]:
+        """ generator function to read field-separated text files and yield a tuple with all of the values \
+        from a single line in the file """
+        try:
+            file: IO = open(path, 'r')
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Unable to open the file")
+        else:
+            with file:
+                line_num = 0
+                for line in file:
+                    line_num += 1
+                    line = line.rstrip().split(sep)
+                    if len(line) != fields:
+                        raise ValueError(f"Line {line_num} has {len(line)} fields expected {fields}")
+                    if header:
+                        header = False
+                    else:
+                        yield line
+
     def __init__(self, path: str) -> None:
         """store students, instructors, grades and majors info"""
         self._path: str = path
@@ -109,7 +129,7 @@ class University:
     def _read_major(self, path: str) -> None:
         """read majors file"""
         try:
-            for major, type_course, course in file_reader(path, 3, '\t', True):
+            for major, type_course, course in self._file_reader(path, 3, '\t', True):
                 if major not in self._majors:
                     self._majors[major] = _Major()
                     self._majors[major].store_major(type_course, course)
@@ -121,7 +141,7 @@ class University:
     def _read_students(self, path: str) -> None:
         """read student file"""
         try:
-            for cwid, name, major in file_reader(path, 3, '\t', True):
+            for cwid, name, major in self._file_reader(path, 3, '\t', True):
                 if major in self._majors:
                     self._students[cwid] = _Student(cwid, name, major,
                                                     self._majors[major].get_required(),
@@ -134,7 +154,7 @@ class University:
     def _read_instructors(self, path: str) -> None:
         """read instructor file"""
         try:
-            for cwid, name, dept in file_reader(path, 3, '\t', True):
+            for cwid, name, dept in self._file_reader(path, 3, '\t', True):
                 self._instructors[cwid] = Instructor(cwid, name, dept)
         except(FileNotFoundError, ValueError) as e:
             print(e)
@@ -142,7 +162,7 @@ class University:
     def _read_grades(self, path: str) -> None:
         """read grades file"""
         try:
-            for s_cwid, course, grade, i_cwid in file_reader(path, 4, '\t', True):
+            for s_cwid, course, grade, i_cwid in self._file_reader(path, 4, '\t', True):
                 if s_cwid in self._students:
                     self._students[s_cwid].store_course_grade(course, self.grade_map[grade])
                 else:
@@ -218,5 +238,5 @@ def main():
     stevens_univ.student_grades_table_db("student_repo.sqlite")
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
